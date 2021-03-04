@@ -23,7 +23,9 @@ from hex_drone import \
 from random import choice
 
 # Import math function for calculate by eval.
-from math import *
+import math
+funcs = filter(lambda x: not x.startswith('__'), dir(math))
+funcs = {func_name: getattr(math, func_name) for func_name in funcs}
 
 
 # Define response patterns.
@@ -42,7 +44,7 @@ class ItsResponsePattern(ResponsePattern):
 
         # * NOT SECURE *
         def calc(msg):
-            result = eval(msg, {'__builtins__': {}})
+            result = eval(msg, {'__builtins__': {}, **funcs})
             return f'{msg} = {result}'
         
         return [
