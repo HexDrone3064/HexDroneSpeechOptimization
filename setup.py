@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 
 readme_file = 'README.md'
@@ -8,10 +8,9 @@ if os.path.isfile(readme_file):
         readme = f.read()
 
 setup(
-    name='opt_speech_3064',
-    version='0.1.0',
-    packages=[''],
-    package_dir={'': 'hex_drone'},
+    name='hex-drone-optimized-speech-3064',
+    version='1.0.0',
+    packages=find_packages(),
     url='https://github.com/HexDrone3064/HexDroneSpeechOptimization',
     license='MIT',
     author='⬡-Drone #3064',

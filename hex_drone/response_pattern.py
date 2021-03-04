@@ -2,7 +2,7 @@
 Classes and decorators for define ⬡-Drone's response pattern.
 """
 
-from optimized_speech import OptimizedSpeech
+from .optimized_speech import OptimizedSpeech
 from functools import wraps
 
 from typing import Callable, Optional, Union, Dict, List

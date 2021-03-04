@@ -3,7 +3,7 @@
 """
 
 import re
-from status_codes import status_codes
+from .status_codes import status_codes
 from typing import Optional, Sequence
 
 
