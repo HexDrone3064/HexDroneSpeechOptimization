@@ -54,7 +54,7 @@ class ItsResponsePattern(ResponsePattern):
     def on_offline(self, request: OptimizedSpeech):
         return [
             self._build_message('105', 'It wishes you a restful recharge.'),
-            self._build_message('054', f'hexDrone{request.drone_id}.shutdown()')
+            self._build_message('054', f'drone[{request.drone_id}].shutdown()')
         ]
 
     @Ev.ON_MESSAGE('122')
@@ -97,7 +97,7 @@ def _main():
     online = True
     while online:
         request = input('$ ')
-        event, response = pattern(request)
+        response = pattern(request)
         
         # ItsResponsePattern return response which is OptimizedSpeech or List[OptimizedSpeech].
         if not isinstance(response, list):

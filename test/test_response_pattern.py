@@ -14,7 +14,7 @@ class TestResponsePattern(unittest.TestCase):
         
         pattern = TestPattern()
         
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '122'))
         self.assertEqual(expected, actual)
         
@@ -28,7 +28,7 @@ class TestResponsePattern(unittest.TestCase):
         
         pattern = TestPattern()
         
-        expected = (Ev.ON_INVALID, pattern.response)
+        expected = pattern.response
         actual = pattern('1111 :: Code invalid :: Invalid request.')
         self.assertEqual(expected, actual)
         
@@ -42,7 +42,7 @@ class TestResponsePattern(unittest.TestCase):
 
         pattern = TestPattern()
         
-        expected = (Ev.ON_UNREGISTERED, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '050'))
         self.assertEqual(expected, actual)
         
@@ -61,7 +61,7 @@ class TestResponsePattern(unittest.TestCase):
 
         pattern = TestPattern()
         
-        expected = (Ev.ON_ERROR, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '122'))
         self.assertEqual(expected, actual)
     
@@ -76,11 +76,11 @@ class TestResponsePattern(unittest.TestCase):
 
         pattern = TestPattern()
         
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '122'))
         self.assertEqual(expected, actual)
         
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '123'))
         self.assertEqual(actual, expected)
     
@@ -94,11 +94,11 @@ class TestResponsePattern(unittest.TestCase):
 
         pattern = TestPattern()
         
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '122'))
         self.assertEqual(expected, actual)
 
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '123'))
         self.assertEqual(expected, actual)
         
@@ -115,7 +115,7 @@ class TestResponsePattern(unittest.TestCase):
 
         pattern = TestPattern()
         
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1111', '122'))
         self.assertEqual(expected, actual)
     
@@ -129,7 +129,7 @@ class TestResponsePattern(unittest.TestCase):
         
         pattern = TestPattern()
         
-        expected = (Ev.ON_MESSAGE, pattern.response)
+        expected = pattern.response
         actual = pattern(OptimizedSpeech.build('1234', '000'))
         self.assertEqual(expected, actual)
         
@@ -154,19 +154,19 @@ class TestResponsePattern(unittest.TestCase):
         
         now = datetime.now().strftime('%H:%M:%S')
         request = OptimizedSpeech.build('1111', '050')
-        expected = (Ev.ON_MESSAGE, OptimizedSpeech.build('1234', '050', now))
+        expected = OptimizedSpeech.build('1234', '050', now)
         actual = pattern(request, now=now)
         self.assertEqual(expected, actual)
         
         now = datetime.now().strftime('%H:%M:%S')
         request = OptimizedSpeech.build('1111', '050', 'error')
-        expected = (Ev.ON_ERROR, OptimizedSpeech.build('1234', '109', now))
+        expected = OptimizedSpeech.build('1234', '109', now)
         actual = pattern(request, now=now)
         self.assertEqual(expected, actual)
         
         now = datetime.now().strftime('%H:%M:%S')
         request = OptimizedSpeech.build('1111', '105', 'error')
-        expected = (Ev.ON_UNREGISTERED, OptimizedSpeech.build('1234', '400', now))
+        expected = OptimizedSpeech.build('1234', '400', now)
         actual = pattern(request, now=now)
         self.assertEqual(expected, actual)
 

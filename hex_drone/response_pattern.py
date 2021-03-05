@@ -6,7 +6,7 @@ from .optimized_speech import OptimizedSpeech
 from .request_event import RequestEvent
 from .logs import get_logger
 from logging import Logger
-from typing import Callable, Optional, Union, Dict, Tuple, List, Any
+from typing import Callable, Optional, Union, Dict, List, Any
 
 FuncStrArg = Callable[..., Any]  # Callable[[str, ...], Any]
 FuncSpeechArg = Callable[..., Any]  # Callable[[OptimizedSpeech, ...], Any]
@@ -68,35 +68,35 @@ class ResponsePattern(metaclass=ResponsePatternMeta):
     def registered_status_codes(self):
         return self._on_message.keys()
     
-    def __call__(self, request: Union[str, OptimizedSpeech], **kwargs) -> Tuple[RequestEvent, Any]:
+    def __call__(self, request: Union[str, OptimizedSpeech], **kwargs) -> Any:
         """
         Get response messages.
         Note that *option_args and **option_kwargs are given to all registered methods.
         
         :param request: Raw text or parsed speech.
         :param kwargs: Arguments to be given to the registered method.
-        :return: A list which contains response messages. It might be empty.
+        :return: Return from invoked handler.
         """
 
-        def _try_call(event: RequestEvent, func: Optional[Callable], *args) -> Tuple[RequestEvent, Any]:
+        def _try_call(event: RequestEvent, func: Optional[Callable], *args) -> Any:
             if func is None:
                 self._logger.debug(f'The function for {event} is None.')
-                return event, None
+                return None
     
             try:
                 self._logger.debug(f'Invoke the function for {event}')
-                return event, func(*args, **kwargs)
+                return func(*args, **kwargs)
             except BaseException as e:
                 self._logger.exception(f'An exception raised while handling {event}.')
                 if self._on_error is None:
                     self._logger.debug(f'The function for {RequestEvent.ON_ERROR} is None.')
-                    return RequestEvent.ON_ERROR, None
+                    return None
                 try:
                     self._logger.debug(f'Invoke the function for {RequestEvent.ON_ERROR}')
-                    return RequestEvent.ON_ERROR, self._on_error(e, **kwargs)
+                    return self._on_error(e, **kwargs)
                 except BaseException as e2:
                     self._logger.exception(f'An exception raised while handling {RequestEvent.ON_ERROR}.')
-                    return RequestEvent.ON_ERROR, None
+                    return None
 
         if isinstance(request, str):
             r = request
