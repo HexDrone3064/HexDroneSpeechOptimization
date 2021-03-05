@@ -9,7 +9,7 @@ if os.path.isfile(readme_file):
 
 setup(
     name='hex-drone-optimized-speech-3064',
-    version='1.0.0',
+    version='2.0.0',
     packages=find_packages(),
     url='https://github.com/HexDrone3064/HexDroneSpeechOptimization',
     license='MIT',

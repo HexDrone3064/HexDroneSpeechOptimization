@@ -18,38 +18,64 @@ It obeys the Hive Mxtress.
 
 Make subclass of `ResponsePattern` and define behaviours.  
 Instantiate an object, and give a request.  
-Type of response is `List[OptimizedSpeech]`.  
+It returns tuple of `RequestEvent` and the return value of the handler.
 
 ```python
 from hex_drone import *
 
-# Define a class.
 class ItsResponsePattern(ResponsePattern):
-    @on_message('122')
-    def on_message(self, request: OptimizedSpeech):
+    @RequestEvent.ON_MESSAGE('122')
+    def on_message(self, speech: OptimizedSpeech):
         return OptimizedSpeech.build('3064', '123')
-    
-# Instantiate an object.
+
 pattern = ItsResponsePattern()
 
-# Get responses.
 request = '3064 :: Code 122 :: Statement :: You are cute.'  # str or OptimizedSpeech
-responses = pattern(request)  # Type of responses is List[OptimizedSpeech]
+event, response = pattern(request)
+print(event)  # on_message
+print(response)  # 3064 :: Code 123 :: Response :: Compliment appreciated, you are cute as well.
 ```
 
-### Decorators
+### RequestEvent
 
-There are 4 decorators:
+There are 4 events in `RequestEvent`:
 
-|decorator|argument of method|condition|
+|event|required argument|condition|
 |----|----|----|
-|`@on_message(status_code)`|`OptimizedSpeech` object.|Received a request with the specified status code.|
-|`@on_unregistered_message`|`OptimizedSpeech` object.|Received a request which status code is not registered.|
-|`@on_invalid_message`|`str` which failed parsing.|Received a request which format is invalid.|
-|`@on_error`|Raised exception.|An exception is raised.|
+|ON_MESSAGE|`OptimizedSpeech` object.|Received a request with the specified status code.|
+|ON_UNREGISTERED|`OptimizedSpeech` object.|Received a request which status code is not registered.|
+|ON_INVALID|`str` which failed parsing.|Received a request which format is invalid.|
+|ON_ERROR|Raised exception.|An exception is raised.|
 
-Method should return `List[OptimizedSpeech]`, `OptimizedSpeech` or `None`.  
-Return will convert to `List[OptimizedSpeech]` automatically.  
+`ON_MESSAGE` requires status codes.  
+e.g. `@RequestEvent.ON_MESSAGE('099', '100')`
+
+### Add arguments
+
+If other object is needed in the handler, It can give the object by keyword arguments.  
+Keyword argument will pass to all methods registered in class.
+Define `**kwargs` to accept arguments.
+
+```python
+from hex_drone import *
+
+class ItsResponsePattern(ResponsePattern):
+    @RequestEvent.ON_MESSAGE('122')
+    def on_statement(self, speech: OptimizedSpeech, obj_a, **kwargs):
+        print(obj_a)  # Do something with obj_a.
+        return OptimizedSpeech.build('3064', '123')
+
+    @RequestEvent.ON_ERROR
+    def on_error(self, error: BaseException, obj_b, **kwargs):
+        print(obj_b)  # Do something with obj_b.
+        return OptimizedSpeech.build('3064', '109')
+
+pattern = ItsResponsePattern()
+
+request = OptimizedSpeech.build('1111', '122')
+event, response = pattern(request, obj_a='hoge', obj_b='fuga')
+```
+
 
 ### OptimizedSpeech
 
