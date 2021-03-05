@@ -18,7 +18,7 @@ It obeys the Hive Mxtress.
 
 Make subclass of `ResponsePattern` and define behaviours.  
 Instantiate an object, and give a request.  
-It returns tuple of `RequestEvent` and the return value of the handler.
+It returns result of invoked handler.
 
 ```python
 from hex_drone import *
@@ -31,8 +31,7 @@ class ItsResponsePattern(ResponsePattern):
 pattern = ItsResponsePattern()
 
 request = '3064 :: Code 122 :: Statement :: You are cute.'  # str or OptimizedSpeech
-event, response = pattern(request)
-print(event)  # on_message
+response = pattern(request)
 print(response)  # 3064 :: Code 123 :: Response :: Compliment appreciated, you are cute as well.
 ```
 
@@ -73,7 +72,7 @@ class ItsResponsePattern(ResponsePattern):
 pattern = ItsResponsePattern()
 
 request = OptimizedSpeech.build('1111', '122')
-event, response = pattern(request, obj_a='hoge', obj_b='fuga')
+response = pattern(request, obj_a='hoge', obj_b='fuga')
 ```
 
 
