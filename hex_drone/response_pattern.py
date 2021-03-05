@@ -3,81 +3,14 @@ Classes and decorators for define ⬡-Drone's response pattern.
 """
 
 from .optimized_speech import OptimizedSpeech
-from functools import wraps
+from .request_event import RequestEvent
+from .logs import get_logger
+from logging import Logger
+from typing import Callable, Optional, Union, Dict, Tuple, List, Any
 
-from typing import Callable, Optional, Union, Dict, List
-OptimizedSpeeches = Union[List[OptimizedSpeech], OptimizedSpeech, None]
-FuncStrArg = Callable[[str], OptimizedSpeeches]
-FuncSpeechArg = Callable[[OptimizedSpeech], OptimizedSpeeches]
-FuncExceptionArg = Callable[[BaseException], OptimizedSpeeches]
-
-
-def return_list(function: Callable[..., OptimizedSpeeches]):
-    """
-    Convert returned value to list.
-    """
-    @wraps(function)
-    def decorated_func(*args, **kwargs) -> List[OptimizedSpeech]:
-        result = function(*args, **kwargs)
-        if result is None:
-            return []
-        elif isinstance(result, list):
-            return result
-        else:
-            return [result]
-    return decorated_func
-
-
-KEY_ATTR = '_registered_function'
-KEY_EVENT = 'event'
-KEY_STATUS_CODES = 'status_codes'
-EVENT_ON_MESSAGE = 'on_message'
-EVENT_ON_INVALID_MESSAGE = 'on_invalid_message'
-EVENT_ON_UNREGISTERED_MESSAGE = 'on_unregistered_message'
-EVENT_ON_ERROR = 'on_error'
-
-
-def _add_attr(obj, value):
-    if hasattr(obj, KEY_ATTR):
-        getattr(obj, KEY_ATTR).append(value)
-    else:
-        setattr(obj, KEY_ATTR, [value])
-
-
-def on_message(*status_codes: str):
-    """
-    Register response pattern which request has specified status code.
-
-    :param status_codes: Status code which response to.
-    """
-    def decorator(function: FuncSpeechArg):
-        _add_attr(function, {KEY_EVENT: EVENT_ON_MESSAGE, KEY_STATUS_CODES: status_codes})
-        return function
-    return decorator
-
-
-def on_invalid_message(function: FuncStrArg):
-    """
-    Register response pattern which request format is invalid.
-    """
-    _add_attr(function, {KEY_EVENT: EVENT_ON_INVALID_MESSAGE})
-    return function
-
-
-def on_unregistered_message(function: FuncSpeechArg):
-    """
-    Register response pattern which status code is not registered.
-    """
-    _add_attr(function, {KEY_EVENT: EVENT_ON_UNREGISTERED_MESSAGE})
-    return function
-
-
-def on_error(function: FuncExceptionArg):
-    """
-    Register response pattern which exception is raised.
-    """
-    _add_attr(function, {KEY_EVENT: EVENT_ON_ERROR})
-    return function
+FuncStrArg = Callable[..., Any]  # Callable[[str, ...], Any]
+FuncSpeechArg = Callable[..., Any]  # Callable[[OptimizedSpeech, ...], Any]
+FuncExceptionArg = Callable[..., Any]  # Callable[[BaseException, ...], Any]
 
 
 class ResponsePatternMeta(type):
@@ -93,16 +26,17 @@ class ResponsePatternMeta(type):
         cls._func_name_on_error: Optional[str] = None
 
         for func_name, func in attrs.items():  # It may not function, but others will be skipped.
-            for event_dict in getattr(func, KEY_ATTR, []):
-                event = event_dict[KEY_EVENT]
-                if event == EVENT_ON_MESSAGE:
-                    for code in event_dict[KEY_STATUS_CODES]:
+            events: List[dict] = getattr(func, RequestEvent.KEY_ATTR, [])
+            for event_dict in events:
+                event = event_dict[RequestEvent.KEY_EVENT]
+                if event == RequestEvent.ON_MESSAGE:
+                    for code in event_dict[RequestEvent.KEY_STATUS_CODES]:
                         cls._func_name_on_message[code] = func_name
-                elif event == EVENT_ON_INVALID_MESSAGE:
+                elif event == RequestEvent.ON_INVALID:
                     cls._func_name_on_invalid_message = func_name
-                elif event == EVENT_ON_UNREGISTERED_MESSAGE:
+                elif event == RequestEvent.ON_UNREGISTERED:
                     cls._func_name_on_unregistered_message = func_name
-                elif event == EVENT_ON_ERROR:
+                elif event == RequestEvent.ON_ERROR:
                     cls._func_name_on_error = func_name
     
 
@@ -111,7 +45,7 @@ class ResponsePattern(metaclass=ResponsePatternMeta):
     Class to register response patterns.
     """
     
-    def __init__(self):
+    def __init__(self, logger: Logger = None):
         def get_func(func_name):
             if func_name is None:
                 return None
@@ -128,33 +62,52 @@ class ResponsePattern(metaclass=ResponsePatternMeta):
         self._on_error: Optional[FuncExceptionArg] = \
             get_func(self._func_name_on_error)
         
-        self.registered_status_codes = self._on_message.keys()
+        self._logger = get_logger(__name__) if logger is None else logger
+
+    @property
+    def registered_status_codes(self):
+        return self._on_message.keys()
     
-    @return_list  # Decorator convert returns from OptimizedSpeeches to List[OptimizedSpeech]
-    def __call__(self, request: Union[str, OptimizedSpeech]) -> List[OptimizedSpeech]:
+    def __call__(self, request: Union[str, OptimizedSpeech], **kwargs) -> Tuple[RequestEvent, Any]:
         """
         Get response messages.
+        Note that *option_args and **option_kwargs are given to all registered methods.
         
         :param request: Raw text or parsed speech.
+        :param kwargs: Arguments to be given to the registered method.
         :return: A list which contains response messages. It might be empty.
         """
-        try:
-            if isinstance(request, str):
-                r = request
-                request = OptimizedSpeech.parse(request)
-                if request is None:
-                    if self._on_invalid_message is None:
-                        return []
-                    return self._on_invalid_message(r)
-            
-            func = self._on_message.get(request.status_code)
+
+        def _try_call(event: RequestEvent, func: Optional[Callable], *args) -> Tuple[RequestEvent, Any]:
             if func is None:
-                if self._on_unregistered_message is None:
-                    return []
-                return self._on_unregistered_message(request)
+                self._logger.debug(f'The function for {event} is None.')
+                return event, None
+    
+            try:
+                self._logger.debug(f'Invoke the function for {event}')
+                return event, func(*args, **kwargs)
+            except BaseException as e:
+                self._logger.exception(f'An exception raised while handling {event}.')
+                if self._on_error is None:
+                    self._logger.debug(f'The function for {RequestEvent.ON_ERROR} is None.')
+                    return RequestEvent.ON_ERROR, None
+                try:
+                    self._logger.debug(f'Invoke the function for {RequestEvent.ON_ERROR}')
+                    return RequestEvent.ON_ERROR, self._on_error(e, **kwargs)
+                except BaseException as e2:
+                    self._logger.exception(f'An exception raised while handling {RequestEvent.ON_ERROR}.')
+                    return RequestEvent.ON_ERROR, None
+
+        if isinstance(request, str):
+            r = request
+            request = OptimizedSpeech.parse(request)
+            if request is None:
+                return _try_call(RequestEvent.ON_INVALID, self._on_invalid_message, r)
             
-            return func(request)
-        except BaseException as e:
-            if self._on_error is None:
-                return []
-            return self._on_error(e)
+        request: OptimizedSpeech
+
+        func = self._on_message.get(request.status_code)
+        if func is None:
+            return _try_call(RequestEvent.ON_UNREGISTERED, self._on_unregistered_message, request)
+        
+        return _try_call(RequestEvent.ON_MESSAGE, func, request)

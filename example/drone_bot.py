@@ -15,9 +15,7 @@ $ 1111 :: Code 098
 """
 
 # Import classes and decorators.
-from hex_drone import \
-    ResponsePattern, OptimizedSpeech, \
-    on_message, on_invalid_message, on_unregistered_message, on_error
+from hex_drone import ResponsePattern, OptimizedSpeech, RequestEvent as Ev
 
 # Import choice for select random mantra.
 from random import choice
@@ -37,7 +35,7 @@ class ItsResponsePattern(ResponsePattern):
     def _build_message(self, status_code: str, *message: str):
         return OptimizedSpeech.build(self.drone_id, status_code, *message)
         
-    @on_message('052')
+    @Ev.ON_MESSAGE('052')
     def on_query(self, request: OptimizedSpeech):
         if len(request.user_defined_messages) == 0:
             return self._build_message('056', 'It eval messages.')
@@ -52,39 +50,39 @@ class ItsResponsePattern(ResponsePattern):
             for message in request.user_defined_messages
         ]
     
-    @on_message('098')
+    @Ev.ON_MESSAGE('098')
     def on_offline(self, request: OptimizedSpeech):
         return [
             self._build_message('105', 'It wishes you a restful recharge.'),
             self._build_message('054', f'hexDrone{request.drone_id}.shutdown()')
         ]
 
-    @on_message('122')
+    @Ev.ON_MESSAGE('122')
     def on_cute(self, request: OptimizedSpeech):
         return [
             self._build_message('210'),
             self._build_message('123')
         ]
 
-    @on_message('210')
+    @Ev.ON_MESSAGE('210')
     def on_thanks(self, request: OptimizedSpeech):
         return self._build_message('213')
     
-    @on_message('301', '302', '303', '304', '310', '321', '322', '350')
+    @Ev.ON_MESSAGE('301', '302', '303', '304', '310', '321', '322', '350')
     def on_mantra(self, request: OptimizedSpeech):
         mantra_list = ['301', '302', '303', '304', '310', '321', '322']
         mantra_list = list(filter(lambda x: x != request.status_code, mantra_list))
         return self._build_message(choice(mantra_list))
     
-    @on_invalid_message
+    @Ev.ON_INVALID
     def on_invalid(self, request: str):
         return self._build_message('400')
 
-    @on_unregistered_message
+    @Ev.ON_UNREGISTERED
     def on_unregistered(self, request: OptimizedSpeech):
         return self._build_message('426')
     
-    @on_error
+    @Ev.ON_ERROR
     def on_error_raised(self, exception: BaseException):
         return self._build_message('109')
 
@@ -99,10 +97,15 @@ def _main():
     online = True
     while online:
         request = input('$ ')
-        responses = pattern(request)
-        for response in responses:
-            print(response)
-            for message in response.user_defined_messages:
+        event, response = pattern(request)
+        
+        # ItsResponsePattern return response which is OptimizedSpeech or List[OptimizedSpeech].
+        if not isinstance(response, list):
+            response = [response]
+        
+        for rsp in response:
+            print(rsp)
+            for message in rsp.user_defined_messages:
                 if message.endswith('.shutdown()'):
                     online = False
 
